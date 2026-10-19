@@ -1,0 +1,11 @@
+services:
+  traefik:
+    command:
+      - --providers.docker=false
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --api.dashboard=true
+      - --api.insecure=true
+    volumes:
+      - ./traefik/local-dynamic.yml:/etc/traefik/dynamic.yml:ro

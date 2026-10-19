@@ -1,0 +1,29 @@
+# Secretos por ambiente (NO versionar) — usar .env.example como plantilla
+.env
+.env.develop
+.env.qa
+.env.staging
+.env.main
+# Binarios / drivers (los provee la imagen liquibase)
+*.jar
+# Backups y temporales
+*.bak
+*.tmp
+.worktrees/
+worktrees/
+tls/
+
+# Archivos locales excluidos de la entrega personal
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.exe
+node_modules/
+target/
+.DS_Store
+Thumbs.db

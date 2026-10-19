@@ -1,0 +1,35 @@
+http:
+  routers:
+    iam:
+      entryPoints: [web]
+      rule: PathPrefix(`/iam`)
+      middlewares: [iam-strip]
+      service: iam
+    scheduling:
+      entryPoints: [web]
+      rule: PathPrefix(`/scheduling`)
+      middlewares: [scheduling-strip, scheduling-rate-limit]
+      service: scheduling
+
+  middlewares:
+    iam-strip:
+      stripPrefix:
+        prefixes: [/iam]
+    scheduling-strip:
+      stripPrefix:
+        prefixes: [/scheduling]
+    scheduling-rate-limit:
+      rateLimit:
+        average: 60
+        period: 1m
+        burst: 20
+
+  services:
+    iam:
+      loadBalancer:
+        servers:
+          - url: http://iam-api:8080
+    scheduling:
+      loadBalancer:
+        servers:
+          - url: http://scheduling-api:8080

@@ -1,0 +1,159 @@
+{
+  "rabbit_version": "3.13.0",
+  "users": [
+    {
+      "name": "app",
+      "password_hash": "ZkyfyTSi2aOEXLc92oY/qYBfe9KC3rLflQD9lOrFuZhCaB8O",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ["administrator"]
+    }
+  ],
+  "vhosts": [{ "name": "/" }],
+  "permissions": [
+    {
+      "user": "app",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "scheduling-events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "monitoring-events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "iam-events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "notification-dlx",
+      "vhost": "/",
+      "type": "fanout",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "actors-iam-dlx",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "notification-service.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "exclusive": false,
+      "arguments": {
+        "x-dead-letter-exchange": "notification-dlx"
+      }
+    },
+    {
+      "name": "notification-service.events.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "exclusive": false,
+      "arguments": {}
+    },
+    {
+      "name": "actors-service.iam",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "exclusive": false,
+      "arguments": {
+        "x-dead-letter-exchange": "actors-iam-dlx",
+        "x-dead-letter-routing-key": "actors-events.dlq"
+      }
+    },
+    {
+      "name": "actors-events.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "exclusive": false,
+      "arguments": {
+        "x-message-ttl": 604800000
+      }
+    }
+  ],
+  "bindings": [
+    {
+      "source": "scheduling-events",
+      "vhost": "/",
+      "destination": "notification-service.events",
+      "destination_type": "queue",
+      "routing_key": "scheduling.schedule.published",
+      "arguments": {}
+    },
+    {
+      "source": "monitoring-events",
+      "vhost": "/",
+      "destination": "notification-service.events",
+      "destination_type": "queue",
+      "routing_key": "monitoring.alert.triggered",
+      "arguments": {}
+    },
+    {
+      "source": "notification-dlx",
+      "vhost": "/",
+      "destination": "notification-service.events.dlq",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {}
+    },
+    {
+      "source": "iam-events",
+      "vhost": "/",
+      "destination": "actors-service.iam",
+      "destination_type": "queue",
+      "routing_key": "iam.user.created",
+      "arguments": {}
+    },
+    {
+      "source": "iam-events",
+      "vhost": "/",
+      "destination": "actors-service.iam",
+      "destination_type": "queue",
+      "routing_key": "iam.user.deactivated",
+      "arguments": {}
+    },
+    {
+      "source": "actors-iam-dlx",
+      "vhost": "/",
+      "destination": "actors-events.dlq",
+      "destination_type": "queue",
+      "routing_key": "actors-events.dlq",
+      "arguments": {}
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+groups:
+  - name: actors-iam-events
+    rules:
+      - alert: ActorsIamDlqMessagesOlderThanFiveMinutes
+        expr: rabbitmq_queue_messages_ready{queue="actors-events.dlq"} > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: actors-service
+          queue: actors-events.dlq
+        annotations:
+          summary: "Actors IAM DLQ has pending messages"
+          description: "actors-events.dlq has contained one or more messages for at least 5 minutes. Inspect IAM event consumption and replay or discard messages after diagnosis."

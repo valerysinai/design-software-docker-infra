@@ -1,0 +1,495 @@
+name: ${COMPOSE_PROJECT_NAME:-design-software}
+
+# =============================================================================
+# BASE DE DATOS ÚNICA - todos los módulos apuntan aquí
+#
+# USO:
+#   1. Levantar la base de datos:
+#      docker compose up postgres -d
+#
+#   2. Aplicar changelogs de un módulo:
+#      docker compose --profile tooling run --rm liquibase-<modulo> update
+#
+#   Módulos disponibles:
+#     liquibase-academic | liquibase-actors   | liquibase-audit
+#     liquibase-document | liquibase-iam      | liquibase-monitoring
+#     liquibase-reference| liquibase-scheduling| liquibase-training
+#     liquibase-notification
+# =============================================================================
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  liquibase-academic:
+    build: .
+    image: ds-liquibase:latest
+    profiles: [tooling]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ${DB_REPOS_DIR:-..}/design-software-academic-management-db:/workspace
+    entrypoint:
+      - liquibase
+      - --search-path=/workspace
+      - --changeLogFile=changelog/changelog-master.yaml
+      - --url=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - --username=${POSTGRES_USER}
+      - --password=${POSTGRES_PASSWORD}
+
+  liquibase-actors:
+    build: .
+    image: ds-liquibase:latest
+    profiles: [tooling]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ${DB_REPOS_DIR:-..}/design-software-actors-db:/workspace
+    entrypoint:
+      - liquibase
+      - --search-path=/workspace
+      - --changeLogFile=changelog/changelog-master.yaml
+      - --url=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - --username=${POSTGRES_USER}
+      - --password=${POSTGRES_PASSWORD}
+
+  liquibase-audit:
+    build: .
+    image: ds-liquibase:latest
+    profiles: [tooling]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ${DB_REPOS_DIR:-..}/design-software-audit-db:/workspace
+    entrypoint:
+      - liquibase
+      - --search-path=/workspace
+      - --changeLogFile=changelog/changelog-master.yaml
+      - --url=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - --username=${POSTGRES_USER}
+      - --password=${POSTGRES_PASSWORD}
+
+  liquibase-document:
+    build: .
+    image: ds-liquibase:latest
+    profiles: [tooling]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ${DB_REPOS_DIR:-..}/design-software-document-db:/workspace
+    entrypoint:
+      - liquibase
+      - --search-path=/workspace
+      - --changeLogFile=changelog/changelog-master.yaml
+      - --url=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - --username=${POSTGRES_USER}
+      - --password=${POSTGRES_PASSWORD}
+
+  liquibase-iam:
+    build: .
+    image: ds-liquibase:latest
+    profiles: [tooling]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ${DB_REPOS_DIR:-..}/design-software-iam-db:/workspace
+    entrypoint:
+      - liquibase
+      - --search-path=/workspace
+      - --changeLogFile=changelog/changelog-master.yaml
+      - --url=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - --username=${POSTGRES_USER}
+      - --password=${POSTGRES_PASSWORD}
+
+  liquibase-monitoring:
+    build: .
+    image: ds-liquibase:latest
+    profiles: [tooling]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ${DB_REPOS_DIR:-..}/design-software-monitoring-db:/workspace
+    entrypoint:
+      - liquibase
+      - --search-path=/workspace
+      - --changeLogFile=changelog/changelog-master.yaml
+      - --url=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - --username=${POSTGRES_USER}
+      - --password=${POSTGRES_PASSWORD}
+
+  liquibase-reference:
+    build: .
+    image: ds-liquibase:latest
+    profiles: [tooling]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ${DB_REPOS_DIR:-..}/design-software-reference-data-db:/workspace
+    entrypoint:
+      - liquibase
+      - --search-path=/workspace
+      - --changeLogFile=changelog/changelog-master.yaml
+      - --url=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - --username=${POSTGRES_USER}
+      - --password=${POSTGRES_PASSWORD}
+
+  liquibase-scheduling:
+    build: .
+    image: ds-liquibase:latest
+    profiles: [tooling]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ${DB_REPOS_DIR:-..}/design-software-scheduling-db:/workspace
+    entrypoint:
+      - liquibase
+      - --search-path=/workspace
+      - --changeLogFile=changelog/changelog-master.yaml
+      - --url=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - --username=${POSTGRES_USER}
+      - --password=${POSTGRES_PASSWORD}
+
+  liquibase-training:
+    build: .
+    image: ds-liquibase:latest
+    profiles: [tooling]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ${DB_REPOS_DIR:-..}/design-software-training-environment-db:/workspace
+    entrypoint:
+      - liquibase
+      - --search-path=/workspace
+      - --changeLogFile=changelog/changelog-master.yaml
+      - --url=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - --username=${POSTGRES_USER}
+      - --password=${POSTGRES_PASSWORD}
+
+  liquibase-notification:
+    build: .
+    image: ds-liquibase:latest
+    profiles: [tooling]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ${DB_REPOS_DIR:-..}/design-software-notification-db:/workspace
+    entrypoint:
+      - liquibase
+      - --search-path=/workspace
+      - --changeLogFile=changelog/changelog-master.yaml
+      - --url=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - --username=${POSTGRES_USER}
+      - --password=${POSTGRES_PASSWORD}
+
+  # ===========================================================================
+  # EDGE / GATEWAY (Traefik) — ADR-007. Entry point unico de la app.
+  # ===========================================================================
+  traefik:
+    image: traefik:v3.1
+    profiles: [edge, notification, iam]
+    command:
+      - --providers.docker=true
+      - --providers.docker.endpoint=${TRAEFIK_DOCKER_ENDPOINT:-unix:///var/run/docker.sock}
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --api.dashboard=true
+      - --api.insecure=true
+    environment:
+      DOCKER_API_VERSION: ${TRAEFIK_DOCKER_API_VERSION:-1.44}
+    ports:
+      - "${EDGE_PORT:-18080}:80"
+      - "${EDGE_DASHBOARD_PORT:-18090}:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  # ===========================================================================
+  # OBSERVABILIDAD (OpenTelemetry + Grafana LGTM) — ADR-008.
+  # ===========================================================================
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.109.0
+    profiles: [observability]
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./observability/otel-collector.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "${OTLP_GRPC_PORT:-4317}:4317"
+      - "${OTLP_HTTP_PORT:-4318}:4318"
+
+  tempo:
+    image: grafana/tempo:2.6.0
+    profiles: [observability]
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./observability/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    profiles: [observability]
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+
+  loki:
+    image: grafana/loki:3.2.0
+    profiles: [observability]
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./observability/loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki_data:/loki
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    profiles: [observability]
+    depends_on: [tempo, prometheus, loki]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./observability/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+      - grafana_data:/var/lib/grafana
+
+  # ===========================================================================
+  # MENSAJERIA (RabbitMQ) + SMTP local (MailHog) — perfil 'broker'. ADR-001/008.
+  # Servicios internos: amqp rabbitmq:5672 · smtp mailhog:1025.
+  # ===========================================================================
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    profiles: [broker, notification, iam, actors, scheduling]
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-app}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-app}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      # HU-NOTIF-004 E2: pre-declare notification-service topology (DLX + DLQ + main
+      # queue with x-dead-letter-exchange). Requires a clean volume on first use;
+      # if queue exists without DLX arg: docker compose down -v && up rabbitmq.
+      - ./broker/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./broker/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./broker/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    profiles: [broker, notification]
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${MAILHOG_UI_PORT:-18025}:8025"
+
+  # ===========================================================================
+  # NOTIFICATION SERVICE (api + worker) — perfil 'notification'. ADR-001/007/008.
+  # Levantar: docker compose --profile notification up
+  # Con observabilidad: docker compose --profile notification --profile observability up
+  # ===========================================================================
+  notification-api:
+    build:
+      context: ${BACKEND_REPOS_DIR:-..}/design-software-notification-service
+      dockerfile: deploy/Dockerfile.api
+    profiles: [notification]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      NOTIFICATION_DB_DSN: "postgres://${APP_DB_USER}:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "otel-collector:4317"
+      OTEL_EXPORTER_OTLP_INSECURE: "true"
+      OTEL_SERVICE_NAME: "notification-api"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notification.rule=PathPrefix(`/notification`)"
+      - "traefik.http.routers.notification.middlewares=notification-strip"
+      - "traefik.http.middlewares.notification-strip.stripprefix.prefixes=/notification"
+      - "traefik.http.services.notification.loadbalancer.server.port=8080"
+
+  notification-worker:
+    build:
+      context: ${BACKEND_REPOS_DIR:-..}/design-software-notification-service
+      dockerfile: deploy/Dockerfile.worker
+    profiles: [notification]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    environment:
+      NOTIFICATION_DB_DSN: "postgres://${APP_DB_USER}:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+      NOTIFICATION_AMQP_URL: "amqp://${RABBITMQ_USER:-app}:${RABBITMQ_PASSWORD:-app}@rabbitmq:5672/"
+      NOTIFICATION_SMTP_ADDR: "mailhog:1025"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "otel-collector:4317"
+      OTEL_EXPORTER_OTLP_INSECURE: "true"
+      OTEL_SERVICE_NAME: "notification-worker"
+
+  # ===========================================================================
+  # IAM SERVICE (api) — perfil 'iam'. ADR-001/007/008.
+  # Levantar: docker compose --profile iam up
+  # Con observabilidad: docker compose --profile iam --profile observability up
+  # ===========================================================================
+  iam-api:
+    build:
+      context: ${BACKEND_REPOS_DIR:-..}/design-software-iam-service
+      dockerfile: deploy/Dockerfile.api
+    profiles: [iam, scheduling]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      IAM_DB_DSN: "jdbc:postgresql://postgres:5432/${POSTGRES_DB}"
+      IAM_DB_USERNAME: ${APP_DB_USER}
+      IAM_DB_PASSWORD: ${APP_DB_PASSWORD}
+      IAM_JWT_PRIVATE_KEY: ${IAM_JWT_PRIVATE_KEY}
+      IAM_JWT_ISSUER: ${IAM_JWT_ISSUER}
+      IAM_ACTORS_ACTIVE_FICHA_URL: "https://actors-api:8080/internal/learners/by-user/{user_id}/active-ficha"
+      IAM_ACTORS_MTLS_KEY_STORE: /run/tls/iam-client.p12
+      IAM_ACTORS_MTLS_KEY_STORE_PASSWORD: ${IAM_ACTORS_MTLS_KEY_STORE_PASSWORD}
+      IAM_ACTORS_MTLS_TRUST_STORE: /run/tls/iam-truststore.p12
+      IAM_ACTORS_MTLS_TRUST_STORE_PASSWORD: ${IAM_ACTORS_MTLS_TRUST_STORE_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-app}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-app}
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_SERVICE_NAME: "iam-api"
+    volumes:
+      - ${TLS_DIR:-./tls}/iam-client.p12:/run/tls/iam-client.p12:ro
+      - ${TLS_DIR:-./tls}/iam-truststore.p12:/run/tls/iam-truststore.p12:ro
+    labels:
+      - "traefik.enable=true"
+      # HealthController (co.sena.iam.adapter.in.rest) serves /health and /ready at the
+      # app root, same as the /api/v1 business paths reached via StripPrefix — no special
+      # routing needed: /iam/health -> stripped -> /health. (Not /actuator/health: that
+      # was an earlier, incorrect assumption before HU-IAM-011's HealthController landed.)
+      - "traefik.http.routers.iam.rule=PathPrefix(`/iam`)"
+      - "traefik.http.routers.iam.middlewares=iam-strip"
+      - "traefik.http.middlewares.iam-strip.stripprefix.prefixes=/iam"
+      - "traefik.http.services.iam.loadbalancer.server.port=8080"
+
+  actors-api:
+    build:
+      context: ${BACKEND_REPOS_DIR:-..}/design-software-actors-service
+      dockerfile: deploy/Dockerfile.api
+    profiles: [actors, iam]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ACTORS_DB_URL: "jdbc:postgresql://postgres:5432/${POSTGRES_DB}"
+      ACTORS_DB_USER: ${APP_DB_USER}
+      ACTORS_DB_PASSWORD: ${APP_DB_PASSWORD}
+      ACADEMIC_MANAGEMENT_BASE_URL: ${ACADEMIC_MANAGEMENT_BASE_URL:-http://academic-api:8080}
+      ACTORS_TLS_ENABLED: "true"
+      ACTORS_TLS_KEY_STORE: /run/tls/actors-server.p12
+      ACTORS_TLS_KEY_STORE_PASSWORD: ${ACTORS_TLS_KEY_STORE_PASSWORD}
+      ACTORS_TLS_TRUST_STORE: /run/tls/actors-truststore.p12
+      ACTORS_TLS_TRUST_STORE_PASSWORD: ${ACTORS_TLS_TRUST_STORE_PASSWORD}
+      ACTORS_TLS_CLIENT_AUTH: need
+      IAM_JWT_ISSUER: ${IAM_JWT_ISSUER}
+      IAM_JWKS_URI: ${IAM_JWKS_URI}
+    volumes:
+      - ${TLS_DIR:-./tls}/actors-server.p12:/run/tls/actors-server.p12:ro
+      - ${TLS_DIR:-./tls}/actors-truststore.p12:/run/tls/actors-truststore.p12:ro
+    expose:
+      - "8080"
+  # ===========================================================================
+  # SCHEDULING SERVICE (api) — perfil 'scheduling'.
+  # HU-SCH-010/011: para levantar con migraciones y dependencias en una sola
+  # invocacion, usar scripts/up-scheduling-stack.ps1 o scripts/up-scheduling-stack.sh.
+  # ===========================================================================
+  scheduling-api:
+    build:
+      context: ${BACKEND_REPOS_DIR:-..}/design-software-scheduling-service
+      dockerfile: deploy/Dockerfile.api
+    profiles: [scheduling]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      iam-api:
+        condition: service_started
+    environment:
+      SCHEDULING_DB_URL: "jdbc:postgresql://postgres:5432/${POSTGRES_DB}"
+      SCHEDULING_DB_USERNAME: ${APP_DB_USER}
+      SCHEDULING_DB_PASSWORD: ${APP_DB_PASSWORD}
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/${POSTGRES_DB}"
+      SPRING_DATASOURCE_USERNAME: ${APP_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${APP_DB_PASSWORD}
+      SCHEDULING_JPA_DDL_AUTO: validate
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${IAM_JWT_ISSUER}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://iam-api:8080/api/v1/auth/.well-known/jwks.json"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://otel-collector:4318/v1/traces"
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: "http://otel-collector:4318/v1/traces"
+      OTEL_SERVICE_NAME: "scheduling-api"
+      SCHEDULING_RABBIT_HEALTH_ENABLED: "false"
+      SCHEDULING_RABBIT_LISTENER_ENABLED: "false"
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: "5672"
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-app}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-app}
+    expose:
+      - "8080"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.scheduling.rule=PathPrefix(`/scheduling`)"
+      - "traefik.http.routers.scheduling.middlewares=scheduling-strip,scheduling-rate-limit"
+      - "traefik.http.middlewares.scheduling-strip.stripprefix.prefixes=/scheduling"
+      - "traefik.http.middlewares.scheduling-rate-limit.ratelimit.average=60"
+      - "traefik.http.middlewares.scheduling-rate-limit.ratelimit.period=1m"
+      - "traefik.http.middlewares.scheduling-rate-limit.ratelimit.burst=20"
+      - "traefik.http.services.scheduling.loadbalancer.server.port=8080"
+
+volumes:
+  postgres_data:
+  tempo_data:
+  loki_data:
+  grafana_data:
+  rabbitmq_data:
