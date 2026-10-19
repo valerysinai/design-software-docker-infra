@@ -1,0 +1,55 @@
+services:
+  web-shell:
+    image: node:24-alpine
+    profiles: [frontend-reference]
+    working_dir: /build/design-software-web-shell
+    environment:
+      IAM_PROXY_TARGET: http://iam:8080
+      REFERENCE_PROXY_TARGET: http://iam:8088
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ${WORKSPACE_ROOT:?Run run.ps1 first}/design-software-web-shell:/source/shell:ro
+      - ${WORKSPACE_ROOT:?Run run.ps1 first}/design-software-design-system:/source/design-system:ro
+      - ${WORKSPACE_ROOT:?Run run.ps1 first}/design-software-frontend-platform:/source/frontend-platform:ro
+      - npm-cache:/root/.npm
+    entrypoint: [sh, -ec]
+    command:
+      - |
+        for project in shell design-system frontend-platform; do
+          case "$$project" in shell) name=web-shell;; *) name="$$project";; esac
+          mkdir -p "/build/design-software-$$name"
+          tar --exclude=.git --exclude=node_modules --exclude=dist --exclude=test-results --exclude=playwright-report -C "/source/$$project" -cf - . | tar -C "/build/design-software-$$name" -xf -
+        done
+        npm ci --no-audit --no-fund
+        exec npm run dev -- --mode reference --host 0.0.0.0 --strictPort
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:5000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 15s
+  reference-mfe:
+    image: node:24-alpine
+    profiles: [frontend-reference]
+    working_dir: /build
+    ports:
+      - "127.0.0.1:5105:5105"
+    volumes:
+      - ${WORKSPACE_ROOT:?Run run.ps1 first}/design-software-reference-data-mfe:/source:ro
+      - npm-cache:/root/.npm
+    entrypoint: [sh, -ec]
+    command:
+      - |
+        tar --exclude=.git --exclude=node_modules --exclude=dist -C /source -cf - . | tar -C /build -xf -
+        npm ci --no-audit --no-fund
+        npm run build -- --mode reference
+        exec npm run preview -- --host 0.0.0.0 --port 5105 --strictPort
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:5105/remoteEntry.js').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 15s
+volumes:
+  npm-cache:
