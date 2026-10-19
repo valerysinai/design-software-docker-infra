@@ -1,0 +1,31 @@
+services:
+  postgres:
+    ports: !override
+      - "127.0.0.1:15439:5432"
+  iam:
+    ports: !override
+      - "127.0.0.1:18092:8080"
+      - "127.0.0.1:18090:8088"
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    hostname: r1-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: r1
+      RABBITMQ_DEFAULT_PASS: ${DB_PASSWORD:?Run run.ps1 first}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      interval: 3s
+      timeout: 10s
+      retries: 40
+  reference:
+    environment:
+      REFERENCE_DATA_AMQP_URL: amqp://r1:${DB_PASSWORD:?Run run.ps1 first}@rabbitmq:5672/
+  tests:
+    environment:
+      REFERENCE_DATA_AMQP_URL: amqp://r1:${DB_PASSWORD:?Run run.ps1 first}@rabbitmq:5672/
+      R1_RUN_ID: ${R1_RUN_ID:-manual}
+      R1_REQUIRED: "true"
+volumes:
+  rabbitmq-data:
