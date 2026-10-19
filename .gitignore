@@ -31,3 +31,4 @@ Thumbs.db
 # Generated local validation evidence; publish only reviewed report excerpts.
 /validation/hu-ref-020/evidence/
 /validation/r1-reference/evidence/
+/validation/frontend-reference/evidence/
