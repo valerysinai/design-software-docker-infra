@@ -1,0 +1,140 @@
+name: hu-ref-020
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: hu_ref_020
+      POSTGRES_USER: validation_owner
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Run run.ps1 first}
+    ports:
+      - "127.0.0.1:15438:5432"
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U validation_owner -d hu_ref_020"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  migrate-iam:
+    image: liquibase/liquibase:4.33
+    profiles: [tooling]
+    environment: &liquibase-env
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://postgres:5432/hu_ref_020
+      LIQUIBASE_COMMAND_USERNAME: validation_owner
+      LIQUIBASE_COMMAND_PASSWORD: ${DB_PASSWORD:?Run run.ps1 first}
+    volumes:
+      - ${WORKSPACE_ROOT:?Run run.ps1 first}/database/design-software-iam-db:/workspace:ro
+    working_dir: /workspace
+    command: [--search-path=/workspace, --changelog-file=changelog/changelog-master.yaml, update, "--context-filter=01_ddl,02_dml,03_dcl,04_tcl,dev"]
+
+  migrate-reference:
+    image: liquibase/liquibase:4.33
+    profiles: [tooling]
+    environment: *liquibase-env
+    volumes:
+      - ${WORKSPACE_ROOT:?Run run.ps1 first}/database/design-software-reference-data-db:/workspace:ro
+    working_dir: /workspace
+    command: [--search-path=/workspace, --changelog-file=changelog/changelog-master.yaml, update, "--context-filter=01_ddl,02_dml,03_dcl,04_tcl,dev"]
+
+  fixtures:
+    image: postgres:16-alpine
+    profiles: [tooling]
+    environment:
+      PGHOST: postgres
+      PGDATABASE: hu_ref_020
+      PGUSER: validation_owner
+      PGPASSWORD: ${DB_PASSWORD:?Run run.ps1 first}
+      IAM_APP_PASSWORD: ${IAM_APP_PASSWORD:?Run run.ps1 first}
+      REFERENCE_APP_PASSWORD: ${REFERENCE_APP_PASSWORD:?Run run.ps1 first}
+      FIXTURE_PASSWORD: ${FIXTURE_PASSWORD:?Run run.ps1 first}
+    volumes:
+      - ./application-users.sql:/validation/application-users.sql:ro
+      - ${WORKSPACE_ROOT:?Run run.ps1 first}/database/design-software-iam-db/test/hu-ref-020:/iam-fixtures:ro
+    entrypoint: [sh, -ec]
+    command:
+      - psql -v ON_ERROR_STOP=1 -f /validation/application-users.sql && psql -v ON_ERROR_STOP=1 -f /iam-fixtures/prepare.sql
+
+  iam:
+    image: maven:3.9-eclipse-temurin-21
+    working_dir: /build
+    environment:
+      IAM_DB_DSN: jdbc:postgresql://postgres:5432/hu_ref_020
+      IAM_DB_USERNAME: hu020_iam
+      IAM_DB_PASSWORD: ${IAM_APP_PASSWORD:?Run run.ps1 first}
+      IAM_JWT_ISSUER: https://iam.hu-ref-020.local
+    volumes:
+      - ${WORKSPACE_ROOT:?Run run.ps1 first}/design-software-iam-service:/source:ro
+      - maven-cache:/root/.m2
+      - signing-key:/keys
+    ports:
+      - "127.0.0.1:18082:8080"
+      - "127.0.0.1:18080:8088"
+    entrypoint: [bash, -ec]
+    command:
+      - |
+        set -o pipefail
+        if [ ! -s /keys/iam.der ]; then
+          umask 077
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /keys/iam.pem 2>/dev/null
+          openssl pkcs8 -topk8 -nocrypt -in /keys/iam.pem -outform DER -out /keys/iam.der
+        fi
+        export IAM_JWT_PRIVATE_KEY="$$(base64 -w0 /keys/iam.der)"
+        build_dir="$$(mktemp -d /tmp/hu-ref-020-build.XXXXXX)"
+        tar --exclude=.git --exclude=target -C /source -cf - . | tar -C "$$build_dir" -xf -
+        cd "$$build_dir"
+        java -version
+        mvn -version
+        mvn -B -ntp -U -DskipTests install
+        exec java -jar iam-api/target/iam-api-0.1.0.jar
+    healthcheck:
+      test: [CMD, curl, -fsS, http://localhost:8080/ready]
+      interval: 5s
+      timeout: 5s
+      retries: 180
+      start_period: 30s
+
+  reference:
+    image: golang:1.26.5
+    # The validator only allows plain HTTP JWKS on loopback. Share the local
+    # network namespace with IAM instead of weakening that security rule.
+    network_mode: service:iam
+    working_dir: /workspace
+    environment:
+      PORT: "8088"
+      REFERENCE_DATA_DATABASE_URL: postgres://hu020_reference:${REFERENCE_APP_PASSWORD:?Run run.ps1 first}@postgres:5432/hu_ref_020?sslmode=disable
+      IAM_JWT_ISSUER: https://iam.hu-ref-020.local
+      IAM_JWKS_URL: http://127.0.0.1:8080/api/v1/auth/.well-known/jwks.json
+    volumes:
+      - ${WORKSPACE_ROOT:?Run run.ps1 first}/design-software-reference-data-service:/workspace:ro
+      - go-modules:/go/pkg/mod
+      - go-build:/root/.cache/go-build
+    command: [go, run, -mod=readonly, ./cmd/reference-data-api]
+
+  tests:
+    image: golang:1.26.5
+    profiles: [tooling]
+    working_dir: /workspace
+    environment:
+      REFERENCE_DATA_TEST_DSN: postgres://validation_owner:${DB_PASSWORD:?Run run.ps1 first}@postgres:5432/hu_ref_020?sslmode=disable
+      IAM_JWT_ISSUER: https://iam.hu-ref-020.local
+      HU_REF_020_REQUIRED: "true"
+      HU_REF_020_IAM_BASE_URL: http://iam:8080
+      HU_REF_020_REFERENCE_DATA_BASE_URL: http://iam:8088
+      HU_REF_020_ADMIN_EMAIL: hu-ref-018-admin@example.test
+      HU_REF_020_ADMIN_PASSWORD: ${FIXTURE_PASSWORD:?Run run.ps1 first}
+      HU_REF_020_LEARNER_EMAIL: hu-ref-018-learner@example.test
+      HU_REF_020_LEARNER_PASSWORD: ${FIXTURE_PASSWORD:?Run run.ps1 first}
+    volumes:
+      - ${WORKSPACE_ROOT:?Run run.ps1 first}/design-software-reference-data-service:/workspace:ro
+      - go-modules:/go/pkg/mod
+      - go-build:/root/.cache/go-build
+    command: [go, test, -mod=readonly, -count=1, -v, ./internal/adapter/in/http/hierarchy, -run, ^TestHURef020ParametersWithRealIAMJWT$]
+
+volumes:
+  database:
+  maven-cache:
+  signing-key:
+  go-modules:
+  go-build:
